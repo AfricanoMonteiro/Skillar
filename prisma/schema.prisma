@@ -1,0 +1,393 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  avatar        String?
+  bio           String?
+  skills        String[]
+  objectives    String[]
+  role          Role     @default(STUDENT)
+  points        Int      @default(0)
+  streak        Int      @default(0)
+  level         UserLevel @default(BEGINNER)
+  joinedAt      DateTime @default(now())
+  lastActive    DateTime @default(now())
+  emailVerified DateTime?
+  password      String?
+  provider      String?
+  
+  // Relations
+  posts         Post[]
+  comments      Comment[]
+  likes         Like[]
+  reactions     Reaction[]
+  sentMessages  Message[] @relation("MessageSender")
+  chatMembers   ChatMember[]
+  notifications Notification[] @relation("NotificationRecipient")
+  notificationsSent Notification[] @relation("NotificationSender")
+  followers     Follow[] @relation("UserFollowers")
+  following     Follow[] @relation("UserFollowing")
+  badges        UserBadge[]
+  achievements  UserAchievement[]
+  courses       CourseEnrollment[]
+  
+  @@map("users")
+}
+
+enum Role {
+  STUDENT
+  MENTOR
+  INSTRUCTOR
+  ADMIN
+  COMPANY
+}
+
+enum UserLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+  MASTER
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  content     String
+  images      String[]
+  type        PostType @default(TEXT)
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  trending    Boolean  @default(false)
+  tags        String[]
+  
+  // Relations
+  comments    Comment[]
+  likes       Like[]
+  reactions   Reaction[]
+  
+  @@map("posts")
+}
+
+enum PostType {
+  TEXT
+  IMAGE
+  VIDEO
+  PROJECT
+  TIP
+  DESIGN
+  CODE
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  postId    String?
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[] @relation("CommentReplies")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  likes     Like[]
+  reactions Reaction[]
+  
+  @@map("comments")
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String?
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId String?
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  messageId String?
+  message   Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, postId])
+  @@unique([userId, commentId])
+  @@unique([userId, messageId])
+  @@map("likes")
+}
+
+model Reaction {
+  id        String      @id @default(cuid())
+  type      ReactionType
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String?
+  post      Post?       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId String?
+  comment   Comment?    @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  messageId String?
+  message   Message?    @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+  
+  @@unique([userId, postId, type])
+  @@unique([userId, commentId, type])
+  @@unique([userId, messageId, type])
+  @@map("reactions")
+}
+
+enum ReactionType {
+  LIKE
+  LOVE
+  LAUGH
+  WOW
+  SAD
+  ANGRY
+  CELEBRATE
+}
+
+model Chat {
+  id           String       @id @default(cuid())
+  name         String?
+  type         ChatType     @default(DIRECT)
+  avatar       String?
+  description  String?
+  category     String?
+  lastMessage  String?
+  lastMessageAt DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  
+  // Relations
+  members      ChatMember[]
+  messages     Message[]
+  
+  @@map("chats")
+}
+
+enum ChatType {
+  DIRECT
+  GROUP
+  CHANNEL
+}
+
+model ChatMember {
+  id       String   @id @default(cuid())
+  chatId   String
+  chat     Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     MemberRole @default(MEMBER)
+  joinedAt DateTime @default(now())
+  lastRead DateTime?
+  
+  @@unique([chatId, userId])
+  @@map("chat_members")
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model Message {
+  id         String      @id @default(cuid())
+  content    String
+  type       MessageType @default(TEXT)
+  files      String[]
+  chatId     String
+  chat       Chat        @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  senderId   String
+  sender     User        @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  replyToId  String?
+  replyTo    Message?    @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: Cascade)
+  replies    Message[]   @relation("MessageReplies")
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  editedAt   DateTime?
+  status     MessageStatus @default(SENT)
+  
+  // Relations
+  likes      Like[]
+  reactions  Reaction[]
+  
+  @@map("messages")
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  VIDEO
+  AUDIO
+  SYSTEM
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  type        NotificationType
+  title       String
+  message     String
+  action      String?
+  data        Json?
+  recipientId String
+  recipient   User             @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  senderId    String?
+  sender      User?            @relation("NotificationSender", fields: [senderId], references: [id], onDelete: SetNull)
+  read        Boolean          @default(false)
+  priority    Priority         @default(NORMAL)
+  createdAt   DateTime         @default(now())
+  
+  @@map("notifications")
+}
+
+enum NotificationType {
+  MESSAGE
+  MENTION
+  LIKE
+  COMMENT
+  FOLLOW
+  SYSTEM
+  ACHIEVEMENT
+  COURSE
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  follower    User     @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String
+  following   User     @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  
+  @@unique([followerId, followingId])
+  @@map("follows")
+}
+
+model Badge {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  description String
+  icon        String
+  color       String
+  category    String
+  requirements Json
+  createdAt   DateTime    @default(now())
+  
+  // Relations
+  users       UserBadge[]
+  
+  @@map("badges")
+}
+
+model UserBadge {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId  String
+  badge    Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  earnedAt DateTime @default(now())
+  
+  @@unique([userId, badgeId])
+  @@map("user_badges")
+}
+
+model Achievement {
+  id          String            @id @default(cuid())
+  name        String            @unique
+  description String
+  icon        String
+  type        AchievementType
+  target      Int
+  category    String
+  createdAt   DateTime          @default(now())
+  
+  // Relations
+  users       UserAchievement[]
+  
+  @@map("achievements")
+}
+
+enum AchievementType {
+  POSTS_COUNT
+  LIKES_RECEIVED
+  COMMENTS_COUNT
+  STREAK_DAYS
+  COURSES_COMPLETED
+  POINTS_EARNED
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  progress      Int         @default(0)
+  completed     Boolean     @default(false)
+  completedAt   DateTime?
+  
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  thumbnail   String
+  category    String
+  level       String
+  duration    Int
+  price       Float    @default(0)
+  instructorId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  enrollments CourseEnrollment[]
+  
+  @@map("courses")
+}
+
+model CourseEnrollment {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress   Int      @default(0)
+  completed  Boolean  @default(false)
+  enrolledAt DateTime @default(now())
+  completedAt DateTime?
+  
+  @@unique([userId, courseId])
+  @@map("course_enrollments")
+} 
