@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🚀 LearnHub - Plataforma de Aprendizado
 
 Uma plataforma moderna de cursos online com design atrativo e funcionalidades completas.
@@ -169,3 +170,5 @@ Este projeto está sob a licença MIT. Veja o arquivo LICENSE para mais detalhes
 ---
 
 **Desenvolvido com ❤️ para transformar a educação online** 
+# Skillar
+plataforma de cursos SASCE (Sistema de Aprendizagem Social, Colaborativa e Empreendedora)
