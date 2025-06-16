@@ -1,5 +1,5 @@
 <<<<<<< HEAD
-# 🚀 LearnHub - Plataforma de Aprendizado
+# 🚀 Skillar - Plataforma de Aprendizado SASCE (Sistema de Aprendizagem Social, Colaborativa e Empreendedora)
 
 Uma plataforma moderna de cursos online com design atrativo e funcionalidades completas.
 
